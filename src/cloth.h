@@ -43,6 +43,12 @@ struct ClothParameters {
   // Mass-spring parameters
   double density;
   double ks;
+  int numWaves = 0;
+  double steepness = 0;
+    vector<double> wavelength{0., 0.5, 0.5, 0.2, 0.05};
+    vector<double> amplitude{0., 0.002, 0.002, 0.001, 0.008};
+    vector<double> speed{0., 0.4, 0.2, 0.3, 0.5};
+    vector<Vector2D> direction{Vector2D(1, 1), Vector2D(2, 1), Vector2D(1, 1), Vector2D(1, 1.5), Vector2D(2, 1)};
 };
 
 struct Cloth {

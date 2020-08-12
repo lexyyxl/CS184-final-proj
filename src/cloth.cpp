@@ -38,11 +38,6 @@ void Cloth::buildGrid() {
 
     double dw = (double)this->width/(this->num_width_points - 1);
     double dh = (double)this->height/(this->num_height_points - 1);
-
-    int num_waves = 4;
-    
-    //double numWaves, double steepness
-    this->wavesurface = WaveSurface(num_waves, 0.03);
     
     for (int i = 0; i < this->num_height_points; ++i) {
         for (int j = 0; j < this->num_width_points; ++j) {
@@ -132,6 +127,11 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
   double delta_t = 1.0f / frames_per_sec / simulation_steps;
 
 
+  //generate Wave Surface
+  //double numWaves, double steepness
+  this->wavesurface = WaveSurface(cp->numWaves, cp->steepness, cp->wavelength, cp->amplitude, cp->speed, cp->direction);
+    
+    
   // TODO (Part 2): Compute total force acting on each point mass.
 
 
@@ -184,10 +184,7 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
         if (!pm->pinned) {
             
             Vector3D new_pos = this->wavesurface.gerstner_position(pm->position.x, pm->position.y, time);
-                //+ 
-                //(1 - cp->damping / 100) * (pm->position - pm->last_position) + pm->forces / mass * delta_t * delta_t;
-            
-            //pm->position + (1 - cp->damping / 100) * (pm->position - pm->last_position) + pm->forces / mass * delta_t * delta_t;
+                
 
             pm->last_position = Vector3D(pm->position.x, pm->position.y, pm->position.z);
             pm->position = new_pos;

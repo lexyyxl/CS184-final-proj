@@ -46,41 +46,5 @@ double Wave::gerstner_pos_z(double x, double y, double time, double qi) {
     return amplitude * sin(dot(frequency * direction, Vector2D(x, y)) + phi * time);
 }
 
-//Vector3D Wave::gerstner_position(double x, double y, double time) {
-//    return Vector3D(x + this->wavesurface.gerstner_x_sum(x, y, time),
-//        y + this->wavesurface.gerstner_y_sum(x, y, time),
-//        this->wavesurface.gerstner_z_sum(x, y, time));
-//}
-//
-//
-////gerstner wave binormal vector
-//Vector3D Wave::binormal(double x, double y, double time) {
-//    Vector2D P = Vector2D(x, y);
-//    double S = sin(this->frequency * dot(this->direction, P) + phi * time);
-//    double C = cos(this->frequency * dot(this->direction, P) + phi * time);
-//    return Vector3D(this->wavesurface.binormal_x_component(S),
-//        this->wavesurface.binormal_y_component(S),
-//        this->wavesurface.binormal_z_component(C));
-//}
-//
-////gerstner wave tangent vector
-//Vector3D Wave::tangent(double x, double y, double time) {
-//    Vector2D P = Vector2D(x, y);
-//    double S = sin(this->frequency * dot(this->direction, P) + phi * time);
-//    double C = cos(this->frequency * dot(this->direction, P) + phi * time);
-//    return Vector3D(this->wavesurface.tangent_x_component(S),
-//        this->wavesurface.tangent_y_component(S),
-//        this->wavesurface.tangent_z_component(C));
-//}
-//
-//
-////gerstner wave normal vector
-//Vector3D Wave::normal(double x, double y, double time) {
-//    Vector2D P = Vector2D(x, y);
-//    double S = sin(this->frequency * dot(this->direction, P) + phi * time);
-//    double C = cos(this->frequency * dot(this->direction, P) + phi * time);
-//    return Vector3D(-this->wavesurface.normal_z_component(C),
-//        -this->wavesurface.tangent_z_component(C),
-//        this->wavesurface.normal_z_component(S));
-//}
+
 
