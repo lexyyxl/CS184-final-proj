@@ -283,7 +283,7 @@ void ClothSimulator::drawContents() {
     Vector3D cam_pos = camera.position();
     shader.setUniform("u_color", color, false);
     shader.setUniform("u_cam_pos", Vector3f(cam_pos.x, cam_pos.y, cam_pos.z), false);
-    shader.setUniform("u_light_pos", Vector3f(0.5, 2, 2), false);
+          shader.setUniform("u_light_pos", Vector3f(0.5, 5, -2), false);
     shader.setUniform("u_light_intensity", Vector3f(3, 3, 3), false);
     shader.setUniform("u_texture_1_size", Vector2f(m_gl_texture_1_size.x, m_gl_texture_1_size.y), false);
     shader.setUniform("u_texture_2_size", Vector2f(m_gl_texture_2_size.x, m_gl_texture_2_size.y), false);
@@ -340,8 +340,8 @@ void ClothSimulator::drawWireframe(GLShader &shader) {
     Vector3D pa = s.pm_a->position;
     Vector3D pb = s.pm_b->position;
 
-    Vector3D na = s.pm_a->normal();
-    Vector3D nb = s.pm_b->normal();
+      Vector3D na = cloth->wavesurface.normal(s.pm_a->position.x,s.pm_a->position.y, cloth->time);//s.pm_a->normal();
+      Vector3D nb = cloth->wavesurface.normal(s.pm_b->position.x,s.pm_b->position.y, cloth->time);//s.pm_b->normal();
 
     positions.col(si) << pa.x, pa.y, pa.z, 1.0;
     positions.col(si + 1) << pb.x, pb.y, pb.z, 1.0;
@@ -373,9 +373,14 @@ void ClothSimulator::drawNormals(GLShader &shader) {
     Vector3D p2 = tri->pm2->position;
     Vector3D p3 = tri->pm3->position;
 
-    Vector3D n1 = tri->pm1->normal();
-    Vector3D n2 = tri->pm2->normal();
-    Vector3D n3 = tri->pm3->normal();
+      
+      Vector3D n1 = cloth->wavesurface.normal(tri->pm1->position.x,tri->pm1->position.y, cloth->time);//tri->pm1->normal();
+      Vector3D n2 = cloth->wavesurface.normal(tri->pm2->position.x,tri->pm2->position.y, cloth->time);//tri->pm2->normal();
+      Vector3D n3 = cloth->wavesurface.normal(tri->pm3->position.x,tri->pm3->position.y, cloth->time);//tri->pm3->normal();
+      
+//    Vector3D n1 = tri->pm1->normal();
+//    Vector3D n2 = tri->pm2->normal();
+//    Vector3D n3 = tri->pm3->normal();
 
     positions.col(i * 3) << p1.x, p1.y, p1.z, 1.0;
     positions.col(i * 3 + 1) << p2.x, p2.y, p2.z, 1.0;
@@ -407,9 +412,9 @@ void ClothSimulator::drawPhong(GLShader &shader) {
     Vector3D p2 = tri->pm2->position;
     Vector3D p3 = tri->pm3->position;
 
-    Vector3D n1 = tri->pm1->normal();
-    Vector3D n2 = tri->pm2->normal();
-    Vector3D n3 = tri->pm3->normal();
+    Vector3D n1 = cloth->wavesurface.normal(tri->pm1->position.x,tri->pm1->position.y, cloth->time);//tri->pm1->normal();
+    Vector3D n2 = cloth->wavesurface.normal(tri->pm2->position.x,tri->pm2->position.y, cloth->time);//tri->pm2->normal();
+    Vector3D n3 = cloth->wavesurface.normal(tri->pm3->position.x,tri->pm3->position.y, cloth->time);//tri->pm3->normal();
 
     positions.col(i * 3    ) << p1.x, p1.y, p1.z, 1.0;
     positions.col(i * 3 + 1) << p2.x, p2.y, p2.z, 1.0;
@@ -422,10 +427,15 @@ void ClothSimulator::drawPhong(GLShader &shader) {
     uvs.col(i * 3    ) << tri->uv1.x, tri->uv1.y;
     uvs.col(i * 3 + 1) << tri->uv2.x, tri->uv2.y;
     uvs.col(i * 3 + 2) << tri->uv3.x, tri->uv3.y;
-    
-    tangents.col(i * 3    ) << 1.0, 0.0, 0.0, 1.0;
-    tangents.col(i * 3 + 1) << 1.0, 0.0, 0.0, 1.0;
-    tangents.col(i * 3 + 2) << 1.0, 0.0, 0.0, 1.0;
+      
+    Vector3D t1 =  cloth->wavesurface.tangent(tri->pm1->position.x,tri->pm1->position.y, cloth->time);
+    Vector3D t2 = cloth->wavesurface.tangent(tri->pm2->position.x,tri->pm2->position.y, cloth->time);
+    Vector3D t3 = cloth->wavesurface.tangent(tri->pm3->position.x,tri->pm3->position.y, cloth->time);
+      
+      
+    tangents.col(i * 3    ) << t1.x, t1.y, t1.z, 1.0; //1.0, 0.0, 0.0, 1.0;
+    tangents.col(i * 3 + 1) << t2.x, t2.y, t2.z, 1.0; //1.0, 0.0, 0.0, 1.0;
+    tangents.col(i * 3 + 2) << t3.x, t3.y, t3.z, 1.0; //1.0, 0.0, 0.0, 1.0;
   }
 
 
@@ -673,6 +683,19 @@ void ClothSimulator::initGUI(Screen *screen) {
 
     fb->setSpinnable(true);
     fb->setCallback([this](int value) { cp->numWaves = (int)(value); });
+      
+      
+    new Label(panel, "Steepness :", "sans-bold");
+
+    FloatBox<double> *fbs = new FloatBox<double>(panel);
+    fbs->setEditable(true);
+    fbs->setFixedSize(Vector2i(100, 20));
+    fbs->setFontSize(14);
+    fbs->setValue(cp->steepness);
+
+    fbs->setSpinnable(true);
+    fbs->setCallback([this](double value) { cp->steepness = (double)(value); });
+      
   }
 
   // Simulation constants

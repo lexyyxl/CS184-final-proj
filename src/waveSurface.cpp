@@ -55,7 +55,7 @@ Vector3D WaveSurface::tangent(double x, double y, double time) {
 
 Vector3D WaveSurface::normal(double x, double y, double time) {
     Vector2D P = Vector2D(x, y);  
-    return Vector3D(-this->normal_z_component(time, P),
+    return Vector3D(-this->binormal_z_component(time, P),
         -this->tangent_z_component(time, P),
         this->normal_z_component(time, P));
 }

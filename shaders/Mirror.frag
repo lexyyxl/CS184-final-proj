@@ -15,7 +15,6 @@ void main() {
   // YOUR CODE HERE
   vec3 wo = u_cam_pos - vec3(v_position);
   vec3 wi = 2 * vec3(v_normal) - wo;
-
   out_color = texture(u_texture_cubemap, wi);
   out_color.a = 1;
 }
