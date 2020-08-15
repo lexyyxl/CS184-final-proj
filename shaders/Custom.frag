@@ -47,7 +47,7 @@ void main() {
     float temp = 1 - eta * eta * (1 - wo.z * wo.z);
     
     if (temp < 0) { //cos_theta = wo.z
-        out_color = texture(u_texture_2, vec2(wi_reflect));
+        out_color = texture(u_texture_4, vec2(wi_reflect));
         out_color.a = 0.5;
         return;
     }
@@ -55,7 +55,7 @@ void main() {
     wi_refract.x = - eta * wo.x;
     wi_refract.y = - eta * wo.y;
     
-    out_color = texture(u_texture_2, vec2(wi_refract));
+    out_color = texture(u_texture_4, vec2(wi_refract));
     out_color.a = 1;
 
 

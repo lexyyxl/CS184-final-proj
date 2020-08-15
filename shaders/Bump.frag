@@ -58,9 +58,9 @@ void main() {
 
 
   float k_d = 1;
-  float k_a = 0.15;
+  float k_a = 0.8;
   vec3 i_a = vec3(0.15, 0.15, 0.15);
-  float k_s = 0.5;
+  float k_s = 0.8;
   float p = 20;
 
   vec3 l_d = k_d * u_light_intensity/(r*r) * max(0, cos_theta1);

@@ -23,511 +23,432 @@
 
 <body>
 
-<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2017</h1>
-<h1 align="middle">Project 4: Cloth Simulator</h1>
-<h2 align="middle">Lexy Li, CS184-aax</h2>
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Summer 2020</h1>
+<h1 align="middle">Final Project: Sea Wave Surface Simulator</h1>
+<h2 align="middle">Lexy Li(3033785746), Jane Zhang(3033360800)</h2>
 
 <br><br>
 
 <div>
 
-<h2 align="middle">Overview</h2>
-<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+<h2 align="middle">Abstract</h2>
+<p> Impacted by the current pandemic, we have unprecedentedly sheltered in place for months. Life under Covid-19 has separated us from the gorgeous nature. Ocean waves, as one of the signature views for us to remember California,  is the subject of our animation project. In this project, we will simulate ocean wave motions on a mesh surface, and apply texture mapping and shading on it in real-time.
+</p>
 <ul>
-    <li>In this project, I simulated cloth using a mass and spring structure. In part 1, I constructed such a structure and system. Using numerical integration in part 2, I simulated the movement of the cloth. With Verlet Integration, I could take into account of the spring forces applied on each point, and then update each point's position. In part 3 and 4, I handled special cases including the cloth's collisions with other objects and with itself in order to make sense of its folding and covering. Lastly, in part 5 I applied shaders to my cloths with a few basic GLSL shader programs, allowing my cloths to have different textures.  </li>
-    <li>One caveat for this project is that I had to distinguish between external forces added on the whole cloth and the internal forces between any two points connected by a small spring.</li>
-    <li>One thing I found interesting about this project is that by adjusting the values of the coefficients like damping and k_s, I could observe different movements of my cloth in a certain scenario. It occured to me that the coefficients in the spring system can be explained by the actual materials of the cloth, which should play the major role in the cloth movement in real life.  </li>
+    <li>Our first problem is to simulate ocean wave motions on a mesh surface. To implement this, we dynamically updated each point’s position by summing up frequency(cosine) curves. Then, we changed the coefficients of the curves to customize each wave’s wavelength, amplitude, speed and direction. Finally, we interpolated over all waves to render a complete wave surface.
+ </li>
+    <li>Our next problem is to render a well-textured wave surface in real time. We made real-time animation by keeping track of the time variable. To incorporate shader programs in our project, we used Gerstner formula to compute vertex normals and tangents on the wave surface. Next, we implemented multiple shaders including bumping, texture mapping, and phong shading that well accounted for water reflection and refraction.
+</li>
 </ul>
 
 
 <br><br>
-<h2 align="middle">Part I: Masses and springs</h2>
-<b><p>Take some screenshots of scene/pinned2.json from a viewing angle where you can clearly see the cloth wireframe to show the structure of your point masses and springs.</p></b>
-<b><p>Show us what the wireframe looks like (1) without any shearing constraints, with only shearing constraints, and (3) with all constraints.</p></b>
-
-<div align="center">
-<table style="width=100%">
-        <tr>
-            <td align="middle">
-            <img src="images/p1-all.png" width="480px" />
-            <figcaption align="middle">
-                <p>with all constraint</p>
-            </figcaption>
-            
-            <td align="middle">
-            <img src="images/p1-0-all.png" width="480px" />
-            <figcaption align="middle">
-                <p>with all constraint - details</p>
-            </figcaption>
-            
-        </tr>
-        
-        <tr>
-            <td align="middle">
-            <img src="images/p1-without shearing.png" width="480px" />
-            <figcaption align="middle">
-                <p>without shearing</p>
-            </figcaption>
-            
-            <td align="middle">
-            <img src="images/p1-0-no sh.png" width="480px" />
-            <figcaption align="middle">
-                <p>without shearing - details</p>
-            </figcaption>
-            
-            
-        </tr>
-                  
-        <tr>
-            <td align="middle">
-            <img src="images/p1-only shearing.png" width="480px" />
-            <figcaption align="middle">
-                <p>with only shearing constraint</p>
-            </figcaption>
+<h2 align="middle">Technical Approach</h2>
+<h2 align="middle">Part I: Wave Surface Mesh</h2>
+<b><p>1. Basic Code Structure</p></b>
+Moving forward from project 4, we added two new objects to represent waves and wave surfaces. The resulting classes are as following:
+    <ul>
+        <li>Wave: each has attributes of wavelength, amplitude, speed and direction</li>
+        <li>WaveSurface: stores a list of waves on the surface; has methods to updated vertex position and compute vertex normal and tangent vectors.</li>
+        <li>Adapted Cloth Object: renders and stores a WaveSurface instance; keeps track of the dynamic time</li>
+    </ul>
     
-            <td align="middle">
-            <img src="images/p1-0-only sh.png" width="480px" />
-            <figcaption align="middle">
-                <p>with only shearing constraint - details</p>
-            </figcaption>
-        </tr>
-    </table>
-</div>
-
+<b><p>2.Position Update Algorithm</p></b>
+    The basic idea of Gerstner Waves is that each vertex position on the surface is the sum of all frequency(cosine) curves at this point at a specific time. <b>We have decided to apply Gerstner's way of computing vertex normals and tangents instead of simply using mesh geometry. After careful testing, we believe that this new approach will give us a more natural shading effect later when we complete shader programs. </b>
 
 
 <br><br>
-<h2 align="middle">Part II: Simulation via numerical integration</h2>
-<b><p>Experiment with some the parameters in the simulation.
-Describe the effects of changing the spring constant ks; how does the cloth behave from start to rest with a very low ks? A high ks?
-What about for density?
-What about for damping?
-For each of the above, observe any noticeable differences in the cloth compared to the default parameters and show us some screenshots of those interesting differences and describe when they occur.
-Show us a screenshot of your shaded cloth from scene/pinned4.json in its final resting state! If you choose to use different parameters than the default ones, please list them.</p></b>
-
-
 <div align="center">
+    Position Update:
 <table style="width=100%">
         <tr>
             <td align="middle">
-            <img src="images/part2.png" width="480px" />
-            <figcaption align="middle">
-                <p>A shaded cloth at its final resting state</p>
-            </figcaption>
-            
-            <td align="middle">
-            <img src="images/part2-1.png" width="480px" />
-            <figcaption align="middle">
-                <p>default :ks=5000; density=150; dampling = 0.2</p>
-            </figcaption>
-            
+            <img src="images/mesh/f2.png" height="160px" />
         </tr>
-</table>
+    </table>
 </div>
 
 
 <div align="center">
+    Vertex Normal:<br>
 <table style="width=100%">
         <tr>
             <td align="middle">
-            <img src="images/part2-lowdamp.png" width="480px" />
-            <figcaption align="middle">
-                <p>damping = 0.001;</p>
-                <p>The cloth bounces for a very long time until it finally stops.</p>
-            </figcaption>
-            
-            <td align="middle">
-            <img src="images/part2-highdamp.png" width="480px" />
-            <figcaption align="middle">
-                <p>part2-damping=0.999;</p>
-                <p>The cloth quickly stops.</p>
-            </figcaption>
-            
+            <img src="images/mesh/f1.png" height="160px" />
         </tr>
+    </table>
+</div>
+
+
+<div align="center">
+     Vertex Tangent:
+<table style="width=100%">
         <tr>
             <td align="middle">
-            <img src="images/part2-lowks.png" width="480px" />
-            <figcaption align="middle">
-                <p>ks=0.001</p>
-                <p>When applied by the same force, a smaller ks allows a spring to undergo a greater length change. Therefore, with the same weight, the left cloth is more stretched.</p>
-            </figcaption>
-            
-            <td align="middle">
-            <img src="images/part2-highks.png" width="480px" />
-            <figcaption align="middle">
-                <p>ks=10000</p>
-                <p>When applied by the same force, a greater ks allows a spring to undergo little length change. Therefore, with the same weight, the right cloth is less stretched.</p>
-            </figcaption>
+            <img src="images/mesh/f4.png" height="160px" />
             
         </tr>
-                  
-        <tr>
-            <td align="middle">
-            <img src="images/part2-lowden.png" width="480px" />
-            <figcaption align="middle">
-                <p>density=10</p>
-                <p>When the volume is fixed, a smaller density makes a cloth lighter in weight. Therefore, the left cloth is less streched because it experiences a less gravity force.</p>
-            </figcaption>
-    
-            <td align="middle">
-            <img src="images/part2-highden.png" width="480px" />
-            <figcaption align="middle">
-                <p>density=1000</p>
-                <p>When the volume is fixed, a smaller density makes a cloth heavier in weight. Therefore, the right cloth is more streched because it experiences a greater gravity force.</p>
-            </figcaption>
-        </tr>
     </table>
 </div>
 
 
-
-
-<br><br>
-<h2 align="middle">Part III: Handling collisions with other objects</h2>
-<b><p>Show us screenshots of your shaded cloth from scene/sphere.json in its final resting state on the sphere using the default ks = 5000 as well as with ks = 500 and ks = 50000. Describe the differences in the results.</p></b>
-
-<div>
-    <table>
+<div align="center">
+    where<br>
+    frequency w = 2 / Wavelength L,<br>
+    A = Amplitude,<br>
+    Q = steepness,<br>
+<table style="width=100%">
         <tr>
             <td align="middle">
-            <img src="images/p3-500.png" width="480px" />
-            <figcaption align="middle">
-                <p>ks = 500</p>
-                <p>When the ks is low, the cloth is very soft and elastic.</p>
-            </figcaption>
-    
-            <td align="middle">
-            <img src="images/p3-5000.png" width="480px" />
-            <figcaption align="middle">
-                <p>ks = 5000</p>
-                <p>When the ks increases, the cloth seems less soft.</p>
-            </figcaption>
-            </tr><tr>
-            <td align="middle">
-            <img src="images/p3-50000.png" width="480px" />
-            <figcaption align="middle">
-                <p>ks = 50000</p>
-                <p>When the ks is high, the cloth seem to have a hard material and is very inelastic when it tries to cover the sphere.</p>
-            </figcaption>
-        </tr>
-    </table>
-</div>
-
-
-
-
-
-<b><p>Show us a screenshot of your shaded cloth lying peacefully at rest on the plane. If you haven't by now, feel free to express your colorful creativity with the cloth! (You will need to complete Part 5 first to show custom colors for anything but the "Wireframe" material.)</p></b>
-
-<div>
-    <table>
-        <tr>
-            <td align="middle">
-            <img src="images/p3-plane1.png" width="480px" />
-            <figcaption align="middle">
-                <p>A non-creative cloth</p>
-            </figcaption>
-    
-            <td align="middle">
-            <img src="images/p3-plane2.png" width="480px" />
-            <figcaption align="middle">
-                <p>A creative cloth because it's colorful</p>
-            </figcaption>
-        </tr>
-    </table>
-</div>
-
-
-<br><br>
-<h2 align="middle">Part IV: Handling self-collisions</h2>
-<b><p>Show us at least 3 screenshots that document how your cloth falls and folds on itself, starting with an early, initial self-collision and ending with the cloth at a more restful state (even if it is still slightly bouncy on the ground).</p></b>
-
-<div>
-    <table>
-        <tr>
-            <td align="middle">
-            <img src="images/p4-1.png" width="480px" />
-            <figcaption align="middle">
-                <p>Initial State, Seq0</p>
-            </figcaption>
-    
-            <td align="middle">
-            <img src="images/p4-2.png" width="480px" />
-            <figcaption align="middle">
-                <p>Seq1</p>
-            </figcaption>
-        </tr>
-        <tr>
-                <td align="middle">
-                <img src="images/p4-3.png" width="480px" />
-                <figcaption align="middle">
-                    <p>Seq2</p>
-                </figcaption>
-        
-                <td align="middle">
-                <img src="images/p4-4.png" width="480px" />
-                <figcaption align="middle">
-                    <p>Seq3</p>
-                </figcaption>
-        </tr>
-        <tr>
-               <td align="middle">
-               <img src="images/p4-5.png" width="480px" />
-               <figcaption align="middle">
-                   <p>Seq4</p>
-               </figcaption>
-       
-               <td align="middle">
-               <img src="images/p4-6.png" width="480px" />
-               <figcaption align="middle">
-                   <p>final state, Seq5</p>
-               </figcaption>
-       </tr>
-    </table>
-</div>
-
-
-    
-<b><p>Vary the density as well as ks and describe with words and screenshots how they affect the behavior of the cloth as it falls on itself.</p></b>
-
-<div>
-    <table>
-        <tr>
-            <td align="middle">
-            <img src="images/p4-d10-1.png" width="480px" />
-            <figcaption align="middle">
-                <p>density = 10</p>
-            </figcaption>
-    
-            <td align="middle">
-            <img src="images/p4-d10-2.png" width="480px" />
-            <figcaption align="middle">
-                <p>density = 10</p>
-            </figcaption>
-        </tr>
-        <tr>
-                <td align="middle">
-                <img src="images/p4-d1000-1.png" width="480px" />
-                <figcaption align="middle">
-                    <p>density = 1000</p>
-                </figcaption>
-        
-                <td align="middle">
-                <img src="images/p4-d1000-2.png" width="480px" />
-                <figcaption align="middle">
-                    <p>density = 1000</p>
-                </figcaption>
-        </tr>
-        
-    </table>
-</div>
-<ul>
-<li>
-<p>As density increases, the cloth falls at a higher speed. With the same volume, the cloth with a higher density will have a greater weight, and therefore it will fall more quickly. </p></li>
-</ul>
-<div>
-    <table>
-        <tr>
-               <td align="middle">
-               <img src="images/p4-ks50-1.png" width="480px" />
-               <figcaption align="middle">
-                   <p>ks = 50</p>
-               </figcaption>
-       
-               <td align="middle">
-               <img src="images/p4-ks50-2.png" width="480px" />
-               <figcaption align="middle">
-                   <p>ks = 50</p>
-               </figcaption>
-       </tr>
-        
-         <tr>
-                <td align="middle">
-                <img src="images/p4-ks5000-1.png" width="480px" />
-                <figcaption align="middle">
-                    <p>ks = 5000</p>
-                </figcaption>
-        
-                <td align="middle">
-                <img src="images/p4-ks5000-2.png" width="480px" />
-                <figcaption align="middle">
-                    <p>ks = 5000</p>
-                </figcaption>
-        </tr>
-    </table>
-</div>
-<ul>
-<li><p>With a low k_s, the cloth folds with more wrinkles; With a high k_s, the cloth looks more "sturdy" with fewer folding wrinkles. This makes sense because when applied with the same force, a higher k_s allows the springs to experience less length change. Therefore, the cloth on the whole will have fewer wrinkles because internal spring length changes have decreased. </p></li>
-</ul>
-
-
-
-<br><br>
-<h2 align="middle">Part V: Shaders</h2>
-<b><p>Explain in your own words what is a shader program and how vertex and fragment shaders work together to create lighting and material effects.</p></b>
-
-<ul>
-    <li><p>A shader program is an isolated program running on GPU. It supports efficient real-time interactive applications as it runs in paralell to execute graphics pipeline. Vertex shaders modify vertices' geometric properties like position and normal vectors. It writes the vertex's position to gl_Position and passes some useful properties to the fragment shaders. Fragment shaders process fragments after the rasterization is completed. They eventually write a color into out_color using the geometric properties of the fragment that are passed in by the vertex shaders. In different shader programs, the way we define the vertex position and vertex normal, as well as how we compute the color written into out_color will decide what the resulting lighting and material effect look like. </p>
-        </li>
-    
-</ul>
-<b><p>Explain the Blinn-Phong shading model in your own words. Show a screenshot of your Blinn-Phong shader outputting only the ambient component, a screen shot only outputting the diffuse component, a screen shot only outputting the specular component, and one using the entire Blinn-Phong model.</p></b>
-
-<ul><li>
-    <p>Blinn-Phong Reflection accounts for Ambient, Diffuse, and Specular lightings. It takes the sum of all three lightings to generate specular highlights, diffuse reflection and ambient lighting in our images at the same time.</p>
-</li></ul>
-    
-    <div>
-        <table>
-            <tr>
-                   <td align="middle">
-                   <img src="images/p5-phong.png" width="480px" />
-                   <figcaption align="middle">
-                       <p>the entire Blinn-Phong model</p>
-                   </figcaption>
+            <img src="images/mesh/f3.png" height="100px" />
            
-                   <td align="middle">
-                   <img src="images/p5-phong-a.png" width="480px" />
-                   <figcaption align="middle">
-                       <p>the ambient component only</p>
-                   </figcaption>
-           </tr>
+        </tr>
+    </table>
+</div>
+
+
+<br><br>
+<b><p>3. Results</p></b>
+
+<div align="center">
+<table style="width=100%">
+        
+        <tr>
+            <td align="middle">
+            <img src="images/mesh/mesh1.png" height="170px" />
+            <td align="middle">
+            <img src="images/mesh/mesh3.png" height="170px" />
+            <td align="middle">
+            <img src="images/mesh/mesh2.png" height="170px" />
+        </tr>
+    </table>
+</div>
+
+
+
+<br><br>
+<h2 align="middle">Part II: Real-time Rendering</h2>
+<b><p>1. Time-Tracking Algorithm: </br></p></b>
+After we've implemented point position update, we add a time attributde to Cloth so that we can keep track of elapsed time and make the surface move dynamically. More specifically, we will update the time variable by adding delta_t to it each time we call Cloth::Simulate. To map a plastic layer onto the surface, we choose the ambience color to be dark blue and use the original phong shader for now. Since the wave surface is displaced horizontally, we adjusted the light posiiton to be (-0.5, -0.5, -2). Below are pictures of how the plastic surface varies according to different values of wave parameters.
+<div align="center">
+<table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_steepness/0.2_zoomin.PNG" width="320px" />
+            <figcaption align="middle">
+                <p>Steepness = 0.2</p>
+            </figcaption>
             
-             <tr>
-                    <td align="middle">
-                    <img src="images/p5-phong-d.png" width="480px" />
-                    <figcaption align="middle">
-                        <p>the diffuse component only</p>
-                    </figcaption>
-            
-                    <td align="middle">
-                    <img src="images/p5-phong-s.png" width="480px" />
-                    <figcaption align="middle">
-                        <p>the specular component only</p>
-                    </figcaption>
-            </tr>
-        </table>
-    </div>
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_steepness/0.3_zoomin.PNG" width="320px" />
+            <figcaption align="middle">
+                <p>Steepness = 0.3</p>
+ 
+            </figcaption>
+                <td align="middle">
+            <img src="images/real_time_dif_cp/dif_steepness/0.4_zoomin.PNG" width="320px" />
+            <figcaption align="middle">
+                <p>Steepness = 0.4</p>
     
+            </figcaption>
+        </tr>
+        <p><b> Crest becomes steeper and less smooth as the steepness parameter increases:</b> </p> 
+        </table>
+ <table style="width=100%">       
+        <tr>
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_amplitude/a_0.03.PNG" height="150px" />
+            <figcaption align="middle">
+                <p>Amplitude = 0.03</p>
+            </figcaption>
+            
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_amplitude/a_0.08.PNG" height="150px" />
+            <figcaption align="middle">
+                <p>Amplitude = 0.08</p>
+            </figcaption>
+            
+                            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_amplitude/a_1.PNG" height="150px" />
+            <figcaption align="middle">
+                <p>Amplitude = 1</p>
+            </figcaption>       
+            
+        </tr>
+         <p><b>The peak of waves becomes higher as we increase amplitude, which makes sense as we are using cosine function to simulate the wave dynamically. The peak of waves is very sensitive to the value of amplitude, so we decided to keep it between 0 and 0.05 and we'll mainly use 0.05 for the rest part:</b></p>
+        </table>
+ <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_wl/wl_0.2.PNG" height="150px" />
+            <figcaption align="middle">
+                <p>Wavelength = 0.2</p>
+
+            </figcaption>
+    
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_wl/wl_0.5.PNG" height="150px" />
+            <figcaption align="middle">
+                <p>Wavelength = 0.5</p>
+
+            </figcaption>
+    
+            <td align="middle">
+                            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_wl/n2_st_0.2_wl_0.7_a_0,05_x2_y1.PNG" height="150px" />
+            <figcaption align="middle">
+                <p>Wavelength = 0.7</p>
+
+            </figcaption>
+    
+            <td align="middle">
+        </tr>
+          <p><b> The crest-to-crest distance between waves in world space increases as wave length increases. </b></p>
+        </table>
+ 
+ <p><b>The direction of the waves changes as we input different direction vectors. </b></p>
+
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_direction/x1_y2.PNG" height="200px" />
+            <figcaption align="middle">
+                <p>Direction: (x = 1, y = 2)</p>
+
+            </figcaption>
+    
+            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_direction/x1_y1.PNG" height="200px" />
+            <figcaption align="middle">
+                <p>Direction: (x = 1, y = 1)</p>
+
+            </figcaption>
+    
+            <td align="middle">
+                            <td align="middle">
+            <img src="images/real_time_dif_cp/dif_direction/x2_y1.PNG" height="200px" />
+            <figcaption align="middle">
+                <p>Direction: (x = 2, y = 1)</p>
+
+            </figcaption>
+    
+            <td align="middle">
+        </tr>
+    </table>
+</div>
+
+<b><p>2. GUI</b></p>
+In GUI, the user is able to set the following values: number of waves on the surface, steepness of the waves, all parameters of the <b>first</b> dominating wave. Waves exceeding the number of 1 will be generated using default parameter values.
+In the Cloth header file, we set the number of waves to be 5 at maximum. <b>The default parameter values vary across different waves.</b> We are not rendering more than 5 waves because we have observed that too many waves will destruct the flow of the wave surface.
+         
+         
+         
+<br><br>
+<h2 align="middle">Part III: Shaders</h2>
+<b><p>1. Reflection.</b> We first try to reflect the skyview onto the wave surface by constructing a "sky box" using cubemap. To account for the fact that the sky is endlessly wide, for all 6 faces of the cubmap, we use the same seamless skyview image. With only reflection, the sea surface looks like a mirror. <b>To make it look more natural, we decide to decrease the value of alpha to be 0.5 after rigorous testing.</b></p>
 
 
 
-<b><p>Show a screenshot of your texture mapping shader using your own custom texture by modifying the textures in /textures/.</p></b>
+<div align="center">
+   <table style="width=100%">
+       <tr>
+          <td align="middle">
+          <img src="images/reflection/lostvalley_up.bmp" height="250px" />
+          <figcaption align="middle">
+              The sky view used to frame the cubemap
+          </figcaption>
+             
+            <td align="middle">
+            <img src="images/reflection/before.PNG" height="250px" />
+            <figcaption align="middle">
+                before reflecting skyview
+            </figcaption>
+        </tr>
+    </table>
+</div>
+       <br><br>
+       
+       
+<div align="center">
+    <table style="width=100%">
+        <tr>
+            <td align="middle">
+            <img src="images/reflection/pure_reflection.gif" width="480px" />
+            <figcaption align="middle">
+                Water reflection of sky with alpha = 1
+            </figcaption>
+ 
+            <td align="middle">
+            <img src="images/reflection/after_2.gif" width="480px" />
+            <figcaption align="middle">
+                 Water reflection of sky with alpha = 0.5
+            </figcaption>
+        </tr>
+    </table>
+</div>
+<b><p>2. Refraction.</b> To account for the refraction between water and air, we adopt ior(index of reflection) to be 1.33 and compute eta to be 1.0/1.33. The reflected ray is then calculated and used for tecture sampling.</p>
+<div align="center">
+    <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="images/refract/before.PNG" height="200px" />
+            <figcaption align="middle">
+                before refraction 
+            </figcaption>
 
+            <td align="middle">
+            <img src="images/refract/texture_3.png" height="200px" />
+            <figcaption align="middle">
+                The water base we used in the cubemap
+            </figcaption>
+            <td align="middle">
+            <img src="images/refract/refraction_only.PNG" height="200px" />
+            <figcaption align="middle">
+              refraction with the new base
+            </figcaption>
+          
+        </tr>
+    </table>
+</div>
+
+<div align="center">
+   <table style="width=100%">
+        <tr>
+        <td align="middle">
+        <img src="images/refract/stone_refrac_only.gif" width="700px" />
+        <figcaption align="middle">
+            Refraction with alpha = 1
+        </figcaption>
+
+        </tr>
+    </table>
+</div>
+
+<p><b>3. Combining water refraction and surfrace reflection of sky</b></p>
+<p>In the previous part, we observe that if we only use refraction, the water body would appear to have very little depth. <b>In order to interpolate between refraction and reflection, we test out the resulting surface with different scalars and decide to scale refraction by 0.15 before adding them together.</b> Again we set the alpha to be 0.5 to take care of the water transparancy.</p>
+<div align="center">
+      <table style="width=100%">
+        <tr>
+    
+            <td align="middle">
+            
+            <img src="images/reflection/after_2.gif" width="480px" />
+            <figcaption align="middle">
+                reflection before refraction 
+            </figcaption>
+            <td align="middle">
+            <img src="images/refract/texture_3.png" width="280px" />
+            <figcaption align="middle">
+                The water base we used in the cubemap
+            </figcaption>                         
+        <tr>
+    
+            <td align="middle">
+            <img src="images/refract/stone_sky.gif" width="500px" />
+            <figcaption align="middle">
+                out_color = (0.15 * Refracted_color + reflected_color) with alpha = 0.5
+            </figcaption>
+
+        </tr>
+    </table>
 <div>
-    <table>
+
+      <b><p>4. Bumping and phong shading after updating normal and tangent vectors. We use a new heightmap on the Bumping shader to render small ripples on the wave surface.</p></b>
+
+<div align="center">
+    <table style="width=100%">
         <tr>
                <td align="middle">
-               <img src="images/p5-texture.png" width="480px" />
+               <img src="images/phong/lexy2.gif" width="400px" />
+               <figcaption align="middle">
+                   <p>Phong shading on a plain surface</p>
+               </figcaption>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div align="center">
+    <table style="width=100%">
+        <tr>
+               <td align="middle">
+               <img src="images/bumping/heightmap.jpg" height="320px" />
+               <figcaption align="middle">
+                   <p>heightmap</p>
+               </figcaption>
+                   
+                <td align="middle">
+               <img src="images/bumping/WeChat%20Image_20200814221341.png" height="350px" />
+               <figcaption align="middle">
+                   <p>surface after we apply bumping</p>
+               </figcaption>
+       </tr>
+    </table>
+</div>
+
+<p><b>5. A great interpolation of all: Dynamic wave surface with bumping, reflection, refraction</b></p>
+
+<div align="center">
+    <table style="width=100%">
+        <tr>
+               <td align="middle">
+               <img src="images/bumping/bumping_text_refract.gif" width="480px" />
                <figcaption align="middle">
                    <p>Customized texture</p>
                </figcaption>
-       
-               <td align="middle">
-               <img src="images/p5-texture2.png" width="480px" />
-               <figcaption align="middle">
-                   <p>shout out to California seas</p>
-               </figcaption>
        </tr>
     </table>
 </div>
 
-
-
-
-<b><p>Show a screenshot of bump mapping on the cloth and on the sphere. Show a screenshot of displacement mapping on the sphere. Use the same texture for both renders. You can either provide your own texture or use one of the ones in the textures directory, BUT choose one that's not the default texture_2.png. Compare the two approaches and resulting renders in your own words. Compare how your the two shaders react to the sphere by changing the sphere mesh's coarseness by using -o 16 -a 16 and then -o 128 -a 128.</p></b>
-
-<div>
-    <table>
+<h2 align="middle">Part IV: Problems We Had and Lessons We Learned</h2>
+<ul>
+<li>The greatest problem we found in this project is interpolating different shading and texture mapping effects. In previous projects, we had lighting and tecture mapping separately implemented. Yet in this project, because we want the resulting ocean surface to be as authentic as possilble, we would want to apply all the shaders on the same object. This really relies on how well we pick the scalars to do linear interpolation over all color values. As we find few practical resources about it, we decide to try out a bunch of candidate values and make our best choice by eyeballing and comparing the resulting animations.</li>
+    
+    <li>One thing we found interesting about this project is that wave coefficients like speed and wavelength play a big role in how authentic our sea wave surface looks. Even a little change will cause huge difference on the resulting waves, which directly decides how real our work looks. A good simulation not only needs a good math model, but also carefully prescribed constants. </li>
+</ul>
+    
+<br><br>
+<h2 align="middle">Results</h2>
+<div align="center">
+<table style="width=100%">
         <tr>
                <td align="middle">
-               <img src="images/p5-16-b1.png" width="480px" />
+               <img src="images/bumping/bumping_text_refract.gif" width="600px" />
                <figcaption align="middle">
-                   <p>resolution 16 * 16; Bump-1</p>
-               </figcaption>
-       
-               <td align="middle">
-               <img src="images/p5-16-b2.png" width="480px" />
-               <figcaption align="middle">
-                   <p>resolution 16 * 16; Bump-2</p>
+                   <p>Customized texture</p>
                </figcaption>
        </tr>
-        
-         <tr>
-                <td align="middle">
-                <img src="images/p5-16-d1.png" width="480px" />
-                <figcaption align="middle">
-                    <p>resolution 16 * 16; Displacement-1</p>
-                </figcaption>
-        
-                <td align="middle">
-                <img src="images/p5-16-d2.png" width="480px" />
-                <figcaption align="middle">
-                    <p>resolution 16 * 16; Displacement-2</p>
-                </figcaption>
-        </tr>
-         
-          <tr>
-                 <td align="middle">
-                 <img src="images/p5-128-d1.png" width="480px" />
-                 <figcaption align="middle">
-                     <p>resolution 128 * 128; Displacement-1</p>
-                 </figcaption>
-         
-                 <td align="middle">
-                 <img src="images/p5-128-d2.png" width="480px" />
-                 <figcaption align="middle">
-                     <p>resolution 128 * 128; Displacement-2</p>
-                 </figcaption>
-         </tr>
-         
-          <tr>
-                 <td align="middle">
-                 <img src="images/p5-128-b1.png" width="480px" />
-                 <figcaption align="middle">
-                     <p>resolution 128 * 128; Bump-1</p>
-                 </figcaption>
-         
-                 <td align="middle">
-                 <img src="images/p5-128-b2.png" width="480px" />
-                 <figcaption align="middle">
-                     <p>resolution 128 * 128; Bump-2</p>
-                 </figcaption>
-         </tr>
-          
-
+      <tr>
+               <td align="middle">
+               <img src="images/bumping/bump_text_ref_side.gif" width="600px" />
+               <figcaption align="middle">
+                   <p>Customized texture</p>
+               </figcaption>
+       </tr>
     </table>
 </div>
 
-<ul>
-    <li>Bump vs Displacement: In Bump Mapping, although the cloth is rendered with an illusion of detail like bumps, its top part closely covering the sphere is still very smooth, which doesn't look plausible and is incompatible with our illusion. In Displacement Mapping, we modifies the vertex position such that the edges of the cloth and sphere are no longer smooth, the effect of which match our expectation for the bumping material. </li>
-    <li> Low resolution vs High resolution(mesh's coarseness): By comparing image "resolution 16*16 displacement-1" and image "resolution 128*128 displacement-2", it's easier to see that a higher resolution makes the bumps more obvious. </li>
-</ul>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/5Xukb769bYQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 
 
+<br><br>
+<h2 align="middle">Part IV: References</h2>
+<b><p> Gerstner Wave Algorithm </p></b>
+<b>https://developer.nvidia.com/sites/all/modules/custom/gpugems/books/GPUGems/gpugems_ch01.html</b>
 
-<b><p>Show a screenshot of your mirror shader on the cloth and on the sphere.</p></b>
-<div>
-    <table>
-          <tr>
-                 <td align="middle">
-                 <img src="images/p5-mirror.png" width="480px" />
-                 <figcaption align="middle">
-                     <p>Mirror shader on the sphere</p>
-                 </figcaption>
-         
-                 <td align="middle">
-                 <img src="images/p5-mirror2.png" width="480px" />
-                 <figcaption align="middle">
-                     <p>Mirror shader on the cloth</p>
-                 </figcaption>
-         </tr>
-          
+<p>Our main take away from this paper is that we are allowing different waves to have different parameter values. Even when we are setting default values, we take care to not make the UI customized values global, as well as not making all default waves exactly the same. The variation between different waves on the surface is crucial to simulating an authentic ocean surface as variance is inevitable in real life.</p>
 
-    </table>
-</div>
+<p>As we said in part2.2, our main deviation from the paper is that we are limiting the number of waves to be 5 at maximum. We are not rendering more than 5 waves because we have observed that too many waves will destruct the flow of the wave surface.</p>
 
-<b><p>Explain what you did in your custom shader, if you made one</p></b>
+    
+<br><br>
+<h2 align="middle">Part V: Contributions from each team member</h2>
+<b><p> Lexy Li focused on: </p></b>
+Mesh Construction, Code Structure Management, GUI, Texture Mapping, Slides and Writeup Text
+<b><p> Jane Zhang focused on: </p></b>
+Geometric Algorithm, Shaders, Image/GIF Rendering, Slide and Writeup Media
+
+<b><p> All other work equally splitted. </p></b>
 </body>
 </html>
